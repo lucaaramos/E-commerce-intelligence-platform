@@ -22,14 +22,18 @@ func New(cfg *config.Config, logger *slog.Logger) *gin.Engine {
 	engine.Use(Middlewares(cfg, logger)...)
 	engine.GET("/healthz", Liveness())
 
-	// Versioned API group; module routes register against this.
-	engine.Group("/api/v1")
+	// Versioned API group; module routes register against this. Health
+	// endpoints are exposed both at the root (infra probes) and under the
+	// API group (frontend proxy).
+	api := engine.Group("/api/v1")
+	api.GET("/healthz", Liveness())
 
 	return engine
 }
 
 // RegisterReadiness attaches the /readyz endpoint with the given dependency
-// checks.
+// checks, both at the root and under the API group.
 func RegisterReadiness(engine *gin.Engine, checks ...HealthChecker) {
 	engine.GET("/readyz", Readiness(checks...))
+	engine.GET("/api/v1/readyz", Readiness(checks...))
 }

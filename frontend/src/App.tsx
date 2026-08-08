@@ -7,7 +7,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/readyz')
+    fetch('/api/v1/readyz')
       .then((res) => res.json())
       .then(setReady)
       .catch((err) => setError(String(err)))
