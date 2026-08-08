@@ -1,0 +1,18 @@
+# Environment
+.env
+*.env.local
+
+# Go
+backend/bin/
+backend/coverage.out
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
