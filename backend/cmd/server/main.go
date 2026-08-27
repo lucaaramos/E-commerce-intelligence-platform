@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"ecommerce-intelligence-platform/backend/internal/product"
+	"ecommerce-intelligence-platform/backend/internal/supplier"
 	"ecommerce-intelligence-platform/backend/pkg/config"
 	"ecommerce-intelligence-platform/backend/pkg/httpx"
 	"ecommerce-intelligence-platform/backend/pkg/logging"
@@ -48,8 +50,32 @@ func run() error {
 	defer mq.Close()
 	logger.Info("rabbitmq connected")
 
-	engine := httpx.New(&cfg, logger)
+	engine, api := httpx.New(&cfg, logger)
 	httpx.RegisterReadiness(engine, db, mq)
+
+	// Repositories
+	productRepo := product.NewRepository(db.DB())
+	supplierRepo := supplier.NewRepository(db.DB())
+
+	// Ensure indexes
+	if err := productRepo.EnsureIndexes(bootCtx); err != nil {
+		return fmt.Errorf("product indexes: %w", err)
+	}
+	if err := supplierRepo.EnsureIndexes(bootCtx); err != nil {
+		return fmt.Errorf("supplier indexes: %w", err)
+	}
+
+	// Services
+	productSvc := product.NewService(productRepo)
+	supplierSvc := supplier.NewService(supplierRepo)
+
+	// Handlers
+	productHandler := product.NewHandler(productSvc)
+	supplierHandler := supplier.NewHandler(supplierSvc)
+
+	// Register routes
+	productHandler.RegisterRoutes(api)
+	supplierHandler.RegisterRoutes(api)
 
 	server := &http.Server{
 		Addr:              cfg.Addr(),

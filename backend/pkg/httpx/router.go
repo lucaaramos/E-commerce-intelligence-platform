@@ -11,7 +11,7 @@ import (
 // New builds the gin engine with the application middleware chain, health
 // endpoints and the versioned API group. Module routes are registered by
 // calling RegisterRoutes on the returned engine.
-func New(cfg *config.Config, logger *slog.Logger) *gin.Engine {
+func New(cfg *config.Config, logger *slog.Logger) (*gin.Engine, *gin.RouterGroup) {
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
@@ -28,7 +28,7 @@ func New(cfg *config.Config, logger *slog.Logger) *gin.Engine {
 	api := engine.Group("/api/v1")
 	api.GET("/healthz", Liveness())
 
-	return engine
+	return engine, api
 }
 
 // RegisterReadiness attaches the /readyz endpoint with the given dependency
