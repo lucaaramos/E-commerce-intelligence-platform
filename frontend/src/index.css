@@ -6,4 +6,17 @@ body {
   margin: 0;
   background: #0f172a;
   color: #e2e8f0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+input::placeholder {
+  color: #64748b;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+table tr:hover {
+  background: #1e293b;
 }

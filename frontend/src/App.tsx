@@ -1,28 +1,19 @@
-import { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import Layout from './components/Layout'
+import Dashboard from './pages/Dashboard'
+import Products from './pages/Products'
+import Suppliers from './pages/Suppliers'
 
-type ReadyState = { status: string; checks?: Record<string, { status: string }> }
-
-function App() {
-  const [ready, setReady] = useState<ReadyState | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch('/api/v1/readyz')
-      .then((res) => res.json())
-      .then(setReady)
-      .catch((err) => setError(String(err)))
-  }, [])
-
+export default function App() {
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 640, margin: '4rem auto', padding: '0 1rem' }}>
-      <h1>E-Commerce Intelligence Platform</h1>
-      <p>Bootstrap complete. Dashboard and product management ship in later iterations.</p>
-      {error && <p style={{ color: 'red' }}>Cannot reach backend: {error}</p>}
-      {ready && (
-        <pre>{JSON.stringify(ready, null, 2)}</pre>
-      )}
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/suppliers" element={<Suppliers />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   )
 }
-
-export default App
