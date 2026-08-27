@@ -51,6 +51,17 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json()
 }
 
+export interface PriceHistory {
+  id: string
+  supplierProductId: string
+  productId: string
+  supplierId: string
+  price: number
+  shippingCost: number
+  source: string
+  timestamp: string
+}
+
 export const api = {
   products: {
     list: (params?: { sku?: string; status?: string; limit?: number; offset?: number }) => {
@@ -85,5 +96,11 @@ export const api = {
       request<ApiResponse<Supplier>>(`/suppliers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) =>
       request<void>(`/suppliers/${id}`, { method: 'DELETE' }),
+  },
+  priceHistory: {
+    byProduct: (productId: string) =>
+      request<{ data: PriceHistory[] }>(`/price-history/product/${productId}`),
+    bySupplierProduct: (spId: string) =>
+      request<{ data: PriceHistory[] }>(`/price-history/supplier-product/${spId}`),
   },
 }

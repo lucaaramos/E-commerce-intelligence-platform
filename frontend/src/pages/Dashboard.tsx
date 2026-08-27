@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import KPICard from '../components/KPICard'
-import { MarginChart, PriceChart, StockChart } from '../components/Charts'
-import { api, type Product, type Supplier } from '../lib/api'
+import { MarginChart, PriceChart, StockChart, PriceHistoryChart } from '../components/Charts'
+import { api, type Product, type Supplier, type PriceHistory } from '../lib/api'
 
 export default function Dashboard() {
   const [products, setProducts] = useState<Product[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([])
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -15,12 +17,23 @@ export default function Dashboard() {
       api.suppliers.list({ limit: 100 }),
     ])
       .then(([prodRes, suppRes]) => {
-        setProducts(prodRes.data.products || [])
+        const prods = prodRes.data.products || []
+        setProducts(prods)
         setSuppliers(suppRes.data.suppliers || [])
+        if (prods.length > 0) {
+          setSelectedProduct(prods[0])
+        }
       })
       .catch((err) => setError(String(err)))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (!selectedProduct) return
+    api.priceHistory.byProduct(selectedProduct.id)
+      .then((res) => setPriceHistory(res.data || []))
+      .catch(() => setPriceHistory([]))
+  }, [selectedProduct])
 
   const activeProducts = products.filter((p) => p.status === 'active').length
   const avgMargin = products.length > 0
@@ -38,7 +51,7 @@ export default function Dashboard() {
         <KPICard title="Total Products" value={products.length} subtitle={`${activeProducts} active`} color="#3b82f6" />
         <KPICard title="Suppliers" value={suppliers.length} color="#8b5cf6" />
         <KPICard title="Avg Margin" value={`${avgMargin}%`} color="#22c55e" />
-        <KPICard title="Products w/ Variants" value={products.filter((p) => p.variants.length > 0).length} color="#f59e0b" />
+        <KPICard title="Products w/ Variants" value={products.filter((p) => p.variants && p.variants.length > 0).length} color="#f59e0b" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -69,6 +82,41 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '1rem' }}>
+        <div style={{
+          background: '#1e293b',
+          border: '1px solid #334155',
+          borderRadius: 12,
+          padding: '1.5rem',
+        }}>
+          <h3 style={{ margin: '0 0 1rem', fontSize: 14, color: '#94a3b8' }}>Select Product</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {products.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setSelectedProduct(p)}
+                style={{
+                  textAlign: 'left',
+                  padding: '0.5rem',
+                  borderRadius: 6,
+                  border: selectedProduct?.id === p.id ? '1px solid #3b82f6' : '1px solid transparent',
+                  background: selectedProduct?.id === p.id ? '#3b82f620' : 'transparent',
+                  color: '#f1f5f9',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                }}
+              >
+                {p.sku}
+              </button>
+            ))}
+          </div>
+        </div>
+        <PriceHistoryChart
+          history={priceHistory}
+          productName={selectedProduct ? `${selectedProduct.sku} - ${selectedProduct.name}` : ''}
+        />
       </div>
 
       <div style={{
