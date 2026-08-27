@@ -45,6 +45,9 @@ func (r *mongoRepository) EnsureIndexes(ctx context.Context) error {
 }
 
 func (r *mongoRepository) Create(ctx context.Context, s *Supplier) error {
+	if s.ID.IsZero() {
+		s.ID = bson.NewObjectID()
+	}
 	_, err := r.coll.InsertOne(ctx, s)
 	if mongo.IsDuplicateKeyError(err) {
 		return ErrNameExists

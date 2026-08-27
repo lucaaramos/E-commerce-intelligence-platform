@@ -40,6 +40,9 @@ func (r *mongoRepository) EnsureIndexes(ctx context.Context) error {
 }
 
 func (r *mongoRepository) Create(ctx context.Context, p *Product) error {
+	if p.ID.IsZero() {
+		p.ID = bson.NewObjectID()
+	}
 	p.CalculateDerivedFields()
 	_, err := r.coll.InsertOne(ctx, p)
 	if mongo.IsDuplicateKeyError(err) {
