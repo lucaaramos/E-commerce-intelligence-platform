@@ -10,8 +10,11 @@ import (
 	"syscall"
 	"time"
 
+	"ecommerce-intelligence-platform/backend/internal/pricehistory"
 	"ecommerce-intelligence-platform/backend/internal/product"
 	"ecommerce-intelligence-platform/backend/internal/supplier"
+	"ecommerce-intelligence-platform/backend/internal/supplierproduct"
+	"ecommerce-intelligence-platform/backend/internal/sync"
 	"ecommerce-intelligence-platform/backend/pkg/config"
 	"ecommerce-intelligence-platform/backend/pkg/httpx"
 	"ecommerce-intelligence-platform/backend/pkg/logging"
@@ -56,6 +59,8 @@ func run() error {
 	// Repositories
 	productRepo := product.NewRepository(db.DB())
 	supplierRepo := supplier.NewRepository(db.DB())
+	supplierProductRepo := supplierproduct.NewRepository(db.DB())
+	priceHistoryRepo := pricehistory.NewRepository(db.DB())
 
 	// Ensure indexes
 	if err := productRepo.EnsureIndexes(bootCtx); err != nil {
@@ -63,6 +68,12 @@ func run() error {
 	}
 	if err := supplierRepo.EnsureIndexes(bootCtx); err != nil {
 		return fmt.Errorf("supplier indexes: %w", err)
+	}
+	if err := supplierProductRepo.EnsureIndexes(bootCtx); err != nil {
+		return fmt.Errorf("supplier_product indexes: %w", err)
+	}
+	if err := priceHistoryRepo.EnsureIndexes(bootCtx); err != nil {
+		return fmt.Errorf("price_history indexes: %w", err)
 	}
 
 	// Services
@@ -72,10 +83,29 @@ func run() error {
 	// Handlers
 	productHandler := product.NewHandler(productSvc)
 	supplierHandler := supplier.NewHandler(supplierSvc)
+	supplierProductHandler := supplierproduct.NewHandler(supplierProductRepo)
+	priceHistoryHandler := pricehistory.NewHandler(priceHistoryRepo)
 
 	// Register routes
 	productHandler.RegisterRoutes(api)
 	supplierHandler.RegisterRoutes(api)
+	supplierProductHandler.RegisterRoutes(api)
+	priceHistoryHandler.RegisterRoutes(api)
+
+	// Start sync worker
+	mockAPIURL := os.Getenv("MOCK_API_URL")
+	if mockAPIURL != "" {
+		syncWorker := sync.NewWorker(
+			mockAPIURL,
+			30*time.Second,
+			productRepo,
+			supplierRepo,
+			supplierProductRepo,
+			priceHistoryRepo,
+			logger,
+		)
+		go syncWorker.Start(rootCtx)
+	}
 
 	server := &http.Server{
 		Addr:              cfg.Addr(),

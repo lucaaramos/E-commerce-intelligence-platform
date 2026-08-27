@@ -50,6 +50,7 @@ services:
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FORMAT: ${LOG_FORMAT:-text}
+      MOCK_API_URL: http://mockapi:9090
     ports:
       - "8080:8080"
     depends_on:
@@ -57,12 +58,20 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      mockapi:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
+
+  mockapi:
+    build: ./mockapi
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
 
   frontend:
     build: ./frontend
