@@ -38,6 +38,9 @@ func (r *mongoRepository) EnsureIndexes(ctx context.Context) error {
 }
 
 func (r *mongoRepository) Create(ctx context.Context, ph *PriceHistory) error {
+	if ph.ID.IsZero() {
+		ph.ID = bson.NewObjectID()
+	}
 	ph.Timestamp = time.Now()
 	_, err := r.coll.InsertOne(ctx, ph)
 	return err

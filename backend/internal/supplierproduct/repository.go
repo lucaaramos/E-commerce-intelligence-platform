@@ -48,6 +48,9 @@ func (r *mongoRepository) EnsureIndexes(ctx context.Context) error {
 }
 
 func (r *mongoRepository) Create(ctx context.Context, sp *SupplierProduct) error {
+	if sp.ID.IsZero() {
+		sp.ID = bson.NewObjectID()
+	}
 	sp.IsActive = true
 	sp.CreatedAt = time.Now()
 	sp.UpdatedAt = time.Now()
