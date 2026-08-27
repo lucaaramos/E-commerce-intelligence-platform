@@ -1,29 +1,74 @@
+import { useEffect, useState } from 'react'
 import KPICard from '../components/KPICard'
-import { RevenueChart, StockChart } from '../components/Charts'
-
-const recentActivity = [
-  { id: 1, action: 'Product created', detail: 'SKU-1001 Wireless Headphones', time: '2 min ago' },
-  { id: 2, action: 'Supplier updated', detail: 'TechCorp International', time: '15 min ago' },
-  { id: 3, action: 'Stock alert', detail: 'SKU-1045 Running Shoes - low stock (12)', time: '1 hr ago' },
-  { id: 4, action: 'Price changed', detail: 'SKU-1023 Smart Watch $299 → $279', time: '2 hr ago' },
-  { id: 5, action: 'Product archived', detail: 'SKU-1099 Old Model Speaker', time: '3 hr ago' },
-]
+import { MarginChart, PriceChart, StockChart } from '../components/Charts'
+import { api, type Product, type Supplier } from '../lib/api'
 
 export default function Dashboard() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    Promise.all([
+      api.products.list({ limit: 100 }),
+      api.suppliers.list({ limit: 100 }),
+    ])
+      .then(([prodRes, suppRes]) => {
+        setProducts(prodRes.data.products || [])
+        setSuppliers(suppRes.data.suppliers || [])
+      })
+      .catch((err) => setError(String(err)))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const activeProducts = products.filter((p) => p.status === 'active').length
+  const avgMargin = products.length > 0
+    ? (products.reduce((sum, p) => sum + p.margin, 0) / products.length).toFixed(1)
+    : '0'
+
+  if (loading) return <p style={{ color: '#94a3b8' }}>Loading...</p>
+  if (error) return <p style={{ color: '#ef4444' }}>Error: {error}</p>
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <h1 style={{ margin: 0, fontSize: 24, color: '#f1f5f9' }}>Dashboard</h1>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-        <KPICard title="Total Products" value={128} subtitle="12 active, 3 archived" color="#3b82f6" />
-        <KPICard title="Suppliers" value={24} subtitle="8 countries" color="#8b5cf6" />
-        <KPICard title="Avg Margin" value="34.2%" trend={{ value: 2.1, positive: true }} color="#22c55e" />
-        <KPICard title="Revenue (MTD)" value="$21,300" trend={{ value: 8.5, positive: true }} color="#f59e0b" />
+        <KPICard title="Total Products" value={products.length} subtitle={`${activeProducts} active`} color="#3b82f6" />
+        <KPICard title="Suppliers" value={suppliers.length} color="#8b5cf6" />
+        <KPICard title="Avg Margin" value={`${avgMargin}%`} color="#22c55e" />
+        <KPICard title="Products w/ Variants" value={products.filter((p) => p.variants.length > 0).length} color="#f59e0b" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
-        <RevenueChart />
-        <StockChart />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <MarginChart products={products} />
+        <PriceChart products={products} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <StockChart products={products} />
+        <div style={{
+          background: '#1e293b',
+          border: '1px solid #334155',
+          borderRadius: 12,
+          padding: '1.5rem',
+        }}>
+          <h3 style={{ margin: '0 0 1rem', fontSize: 16, color: '#f1f5f9' }}>Price Distribution</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {[
+              { range: '$0 - $50', count: products.filter((p) => p.sellingPrice <= 50).length },
+              { range: '$50 - $100', count: products.filter((p) => p.sellingPrice > 50 && p.sellingPrice <= 100).length },
+              { range: '$100 - $200', count: products.filter((p) => p.sellingPrice > 100 && p.sellingPrice <= 200).length },
+              { range: '$200+', count: products.filter((p) => p.sellingPrice > 200).length },
+            ].map(({ range, count }) => (
+              <div key={range} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #334155' }}>
+                <span style={{ fontSize: 14, color: '#94a3b8' }}>{range}</span>
+                <span style={{ fontSize: 14, color: '#f1f5f9', fontWeight: 600 }}>{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div style={{
@@ -32,10 +77,10 @@ export default function Dashboard() {
         borderRadius: 12,
         padding: '1.5rem',
       }}>
-        <h3 style={{ margin: '0 0 1rem', fontSize: 16, color: '#f1f5f9' }}>Recent Activity</h3>
+        <h3 style={{ margin: '0 0 1rem', fontSize: 16, color: '#f1f5f9' }}>Recent Products</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {recentActivity.map((item) => (
-            <div key={item.id} style={{
+          {products.slice(0, 5).map((p) => (
+            <div key={p.id} style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -44,12 +89,18 @@ export default function Dashboard() {
               borderRadius: 8,
             }}>
               <div>
-                <span style={{ fontSize: 14, color: '#f1f5f9' }}>{item.action}</span>
-                <span style={{ fontSize: 14, color: '#64748b', marginLeft: '0.75rem' }}>{item.detail}</span>
+                <span style={{ fontSize: 14, color: '#f1f5f9' }}>{p.name}</span>
+                <span style={{ fontSize: 14, color: '#64748b', marginLeft: '0.75rem', fontFamily: 'monospace' }}>{p.sku}</span>
               </div>
-              <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{item.time}</span>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <span style={{ fontSize: 14, color: '#f1f5f9' }}>${p.sellingPrice.toFixed(2)}</span>
+                <span style={{ fontSize: 12, color: '#22c55e' }}>{p.margin.toFixed(1)}%</span>
+              </div>
             </div>
           ))}
+          {products.length === 0 && (
+            <p style={{ color: '#64748b', fontSize: 14 }}>No products yet. Add one from the Products page.</p>
+          )}
         </div>
       </div>
     </div>
