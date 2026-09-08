@@ -2,10 +2,8 @@ package sync
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"time"
 
 	"ecommerce-intelligence-platform/backend/internal/pricehistory"
@@ -14,27 +12,18 @@ import (
 	"ecommerce-intelligence-platform/backend/internal/supplierproduct"
 )
 
-type MockProduct struct {
-	ID        string  `json:"id"`
-	SKU       string  `json:"sku"`
-	Name      string  `json:"name"`
-	Price     float64 `json:"price"`
-	Stock     int     `json:"stock"`
-	UpdatedAt string  `json:"updatedAt"`
-}
-
 type Worker struct {
-	baseURL        string
-	interval       time.Duration
-	productRepo    product.Repository
-	supplierRepo   supplier.Repository
-	spRepo         supplierproduct.Repository
-	priceRepo      pricehistory.Repository
-	logger         *slog.Logger
+	provider     product.ProductProvider
+	interval     time.Duration
+	productRepo  product.Repository
+	supplierRepo supplier.Repository
+	spRepo       supplierproduct.Repository
+	priceRepo    pricehistory.Repository
+	logger       *slog.Logger
 }
 
 func NewWorker(
-	baseURL string,
+	provider product.ProductProvider,
 	interval time.Duration,
 	productRepo product.Repository,
 	supplierRepo supplier.Repository,
@@ -43,18 +32,18 @@ func NewWorker(
 	logger *slog.Logger,
 ) *Worker {
 	return &Worker{
-		baseURL:        baseURL,
-		interval:       interval,
-		productRepo:    productRepo,
-		supplierRepo:   supplierRepo,
-		spRepo:         spRepo,
-		priceRepo:      priceRepo,
-		logger:         logger,
+		provider:     provider,
+		interval:     interval,
+		productRepo:  productRepo,
+		supplierRepo: supplierRepo,
+		spRepo:       spRepo,
+		priceRepo:    priceRepo,
+		logger:       logger,
 	}
 }
 
 func (w *Worker) Start(ctx context.Context) {
-	w.logger.Info("sync worker starting", "interval", w.interval, "url", w.baseURL)
+	w.logger.Info("sync worker starting", "interval", w.interval)
 
 	// Run immediately on start
 	w.sync(ctx)
@@ -76,13 +65,13 @@ func (w *Worker) Start(ctx context.Context) {
 func (w *Worker) sync(ctx context.Context) {
 	w.logger.Info("sync started")
 
-	// 1. Fetch from mock API
-	mockProducts, err := w.fetchMockProducts(ctx)
+	// 1. Fetch products from provider
+	mockProducts, err := w.provider.FetchProducts(ctx)
 	if err != nil {
-		w.logger.Error("failed to fetch mock products", "error", err)
+		w.logger.Error("failed to fetch products from provider", "error", err)
 		return
 	}
-	w.logger.Info("fetched products from mock API", "count", len(mockProducts))
+	w.logger.Info("fetched products from provider", "count", len(mockProducts))
 
 	// 2. Get existing supplier products
 	supplierProducts, err := w.spRepo.List(ctx, supplierproduct.SupplierProductFilter{})
@@ -103,7 +92,7 @@ func (w *Worker) sync(ctx context.Context) {
 	for _, mp := range mockProducts {
 		sp, exists := skuMap[mp.SKU]
 		if !exists {
-			w.logger.Info("new product found in mock API, skipping (not linked)", "sku", mp.SKU)
+			w.logger.Info("new product found in provider, skipping (not linked)", "sku", mp.SKU)
 			continue
 		}
 
@@ -137,7 +126,7 @@ func (w *Worker) sync(ctx context.Context) {
 				SupplierID:        sp.SupplierID,
 				Price:             mp.Price,
 				ShippingCost:      sp.ShippingCost,
-				Source:            "mock-api",
+				Source:            w.provider.ProviderID(),
 			}
 			if err := w.priceRepo.Create(ctx, ph); err != nil {
 				w.logger.Error("failed to create price history", "error", err)
@@ -171,26 +160,6 @@ func (w *Worker) sync(ctx context.Context) {
 	}
 
 	w.logger.Info("sync completed")
-}
-
-func (w *Worker) fetchMockProducts(ctx context.Context) ([]MockProduct, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", w.baseURL+"/products", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var products []MockProduct
-	if err := json.NewDecoder(resp.Body).Decode(&products); err != nil {
-		return nil, err
-	}
-
-	return products, nil
 }
 
 func getLatestPrice(ph *pricehistory.PriceHistory) float64 {

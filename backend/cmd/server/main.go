@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"ecommerce-intelligence-platform/backend/internal/adapters/dummyjson"
 	"ecommerce-intelligence-platform/backend/internal/pricehistory"
 	"ecommerce-intelligence-platform/backend/internal/product"
 	"ecommerce-intelligence-platform/backend/internal/supplier"
@@ -95,8 +96,10 @@ func run() error {
 	// Start sync worker
 	mockAPIURL := os.Getenv("MOCK_API_URL")
 	if mockAPIURL != "" {
+		dummyClient := dummyjson.NewClient()
+		dummyProvider := dummyjson.NewDummyJSONProvider(dummyClient, logger)
 		syncWorker := sync.NewWorker(
-			mockAPIURL,
+			dummyProvider,
 			30*time.Second,
 			productRepo,
 			supplierRepo,
