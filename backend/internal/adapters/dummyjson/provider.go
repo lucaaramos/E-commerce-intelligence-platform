@@ -8,6 +8,18 @@ import (
 	"ecommerce-intelligence-platform/backend/internal/product"
 )
 
+// type ProviderProduct struct {
+// 	ID        int     `json:"id"`
+// 	SKU       string  `json:"sku"`
+// 	Name      string  `json:"title"`
+// 	Price     float64 `json:"price"`
+// 	Stock     int     `json:"stock"`
+// 	UpdatedAt string  `json:"updatedAt"`
+// 	Category  string  `json:"category"`
+// 	Rating    float64 `json:"rating"`
+// 	Brand     string  `json:"brand"`
+// }
+
 type DummyJSONProvider struct {
 	client *Client
 	logger *slog.Logger
@@ -20,7 +32,7 @@ func NewDummyJSONProvider(client *Client, logger *slog.Logger) *DummyJSONProvide
 	}
 }
 
-func (p *DummyJSONProvider) FetchProducts(ctx context.Context) ([]product.ProductDTO, error) {
+func (p *DummyJSONProvider) FetchProducts(ctx context.Context) ([]product.Product, error) {
 	if p == nil || p.client == nil {
 		return nil, fmt.Errorf("dummyjson client is nil")
 	}
@@ -30,25 +42,19 @@ func (p *DummyJSONProvider) FetchProducts(ctx context.Context) ([]product.Produc
 		return nil, err
 	}
 
-	mapped := make([]product.ProductDTO, 0, len(products))
+	mapped := make([]product.Product, 0, len(products))
 	for _, item := range products {
-		mapped = append(mapped, product.ProductDTO{
-			ID:        item.ID,
-			SKU:       item.SKU,
-			Name:      item.Name,
-			Price:     item.Price,
-			Stock:     item.Stock,
-			UpdatedAt: item.UpdatedAt,
-			Category:  item.Category,
-			Rating:    item.Rating,
-			Brand:     item.Brand,
+		mapped = append(mapped, product.Product{
+			SKU:          item.SKU,
+			Name:         item.Name,
+			SellingPrice: item.Price,
 		})
 	}
 
 	return mapped, nil
 }
 
-func (p *DummyJSONProvider) FetchProductBySKU(ctx context.Context, sku string) (*product.ProductDTO, error) {
+func (p *DummyJSONProvider) FetchProductBySKU(ctx context.Context, sku string) (*product.Product, error) {
 	if p == nil || p.client == nil {
 		return nil, fmt.Errorf("dummyjson client is nil")
 	}
@@ -60,16 +66,10 @@ func (p *DummyJSONProvider) FetchProductBySKU(ctx context.Context, sku string) (
 
 	for _, item := range products {
 		if item.SKU == sku {
-			mapped := &product.ProductDTO{
-				ID:        item.ID,
-				SKU:       item.SKU,
-				Name:      item.Name,
-				Price:     item.Price,
-				Stock:     item.Stock,
-				UpdatedAt: item.UpdatedAt,
-				Category:  item.Category,
-				Rating:    item.Rating,
-				Brand:     item.Brand,
+			mapped := &product.Product{
+				SKU:          item.SKU,
+				Name:         item.Name,
+				SellingPrice: item.Price,
 			}
 			return mapped, nil
 		}

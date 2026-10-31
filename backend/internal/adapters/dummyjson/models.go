@@ -11,3 +11,5 @@ type ProductDTO struct {
 	Rating    float64 `json:"rating"`
 	Brand     string  `json:"brand"`
 }
+
+type ProviderProduct = ProductDTO
