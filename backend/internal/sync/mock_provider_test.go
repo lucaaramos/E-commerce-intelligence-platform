@@ -10,19 +10,19 @@ import (
 
 // mockProvider implements product.Provider for testing purposes.
 type mockProvider struct {
-	products       []product.ProductDTO
-	productBySKU   map[string]product.ProductDTO
-	shouldFail     bool
-	failAfter      int
-	callCount      int
+	products     []product.ProductDTO
+	productBySKU map[string]product.ProductDTO
+	shouldFail   bool
+	failAfter    int
+	callCount    int
 }
 
 func newMockProvider(products ...product.ProductDTO) *mockProvider {
 	m := &mockProvider{
-		products:      products,
-		productBySKU:  make(map[string]product.ProductDTO),
-		shouldFail:    false,
-		failAfter:     999,
+		products:     products,
+		productBySKU: make(map[string]product.ProductDTO),
+		shouldFail:   false,
+		failAfter:    999,
 	}
 	for _, p := range products {
 		m.productBySKU[p.SKU] = p
@@ -37,7 +37,7 @@ func (m *mockProvider) ProviderID() string {
 func (m *mockProvider) FetchProducts(ctx context.Context) ([]product.ProductDTO, error) {
 	m.callCount++
 	if m.shouldFail && m.callCount >= m.failAfter {
-		return nil, errors.New("simulated failure after " + string(rune('0' + m.callCount)))
+		return nil, errors.New("simulated failure after " + string(rune('0'+m.callCount)))
 	}
 	// Return a copy to prevent mutation
 	result := make([]product.ProductDTO, len(m.products))
@@ -47,19 +47,19 @@ func (m *mockProvider) FetchProducts(ctx context.Context) ([]product.ProductDTO,
 
 func (m *mockProvider) FetchProductBySKU(ctx context.Context, sku string) (*product.ProductDTO, error) {
 	m.callCount++
-	product, exists := m.productBySKU[sku]
+	productDTO, exists := m.productBySKU[sku]
 	if !exists {
 		return nil, errors.New("product not found")
 	}
 	// Return a pointer to a copy
-	p := product
+	p := productDTO
 	return &p, nil
 }
 
 func TestWorkerFetchProducts(t *testing.T) {
 	mock := newMockProvider(
-		product.ProductDTO{ID: 1, SKU: "TEST-001", Name: "Test Product", Price: 10.00, Stock: 50},
-		product.ProductDTO{ID: 2, SKU: "TEST-002", Name: "Test Product 2", Price: 20.00, Stock: 100},
+		product.ProductDTO{ID: "1", SKU: "TEST-001", Name: "Test Product", Price: 10.00, Stock: 50},
+		product.ProductDTO{ID: "2", SKU: "TEST-002", Name: "Test Product 2", Price: 20.00, Stock: 100},
 	)
 
 	products, err := mock.FetchProducts(context.Background())
@@ -79,18 +79,18 @@ func TestWorkerFetchProducts(t *testing.T) {
 
 func TestWorkerFetchProductBySKU(t *testing.T) {
 	mock := newMockProvider(
-		product.ProductDTO{ID: 1, SKU: "TEST-001", Name: "Test Product", Price: 10.00, Stock: 50},
+		product.ProductDTO{ID: "1", SKU: "TEST-001", Name: "Test Product", Price: 10.00, Stock: 50},
 	)
 
-	product, err := mock.FetchProductBySKU(context.Background(), "TEST-001")
+	productDTO, err := mock.FetchProductBySKU(context.Background(), "TEST-001")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	if product == nil {
+	if productDTO == nil {
 		t.Fatal("expected non-nil product")
 	}
-	if product.SKU != "TEST-001" {
-		t.Fatalf("expected SKU TEST-001, got %s", product.SKU)
+	if productDTO.SKU != "TEST-001" {
+		t.Fatalf("expected SKU TEST-001, got %s", productDTO.SKU)
 	}
 
 	// Test not found
