@@ -22,7 +22,7 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) ListProducts(ctx context.Context, limit, skip int) ([]ProductDTO, int, error) {
+func (c *Client) ListProducts(ctx context.Context, limit, skip int) ([]ProviderProduct, int, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", baseURL+"/products", nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to create request: %w", err)
@@ -46,7 +46,7 @@ func (c *Client) ListProducts(ctx context.Context, limit, skip int) ([]ProductDT
 	}
 
 	type response struct {
-		Products []ProductDTO `json:"products"`
+		Products []ProviderProduct `json:"products"`
 		Total    int          `json:"total"`
 		Skip     int          `json:"skip"`
 		Limit    int          `json:"limit"`
@@ -60,7 +60,7 @@ func (c *Client) ListProducts(ctx context.Context, limit, skip int) ([]ProductDT
 	return res.Products, res.Total, nil
 }
 
-func (c *Client) GetProductByID(ctx context.Context, id int) (*ProductDTO, error) {
+func (c *Client) GetProductByID(ctx context.Context, id int) (*ProviderProduct, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/products/%d", baseURL, id), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -76,7 +76,7 @@ func (c *Client) GetProductByID(ctx context.Context, id int) (*ProductDTO, error
 		return nil, fmt.Errorf("api returned status %d", resp.StatusCode)
 	}
 
-	var product ProductDTO
+	var product ProviderProduct
 	if err := json.NewDecoder(resp.Body).Decode(&product); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
@@ -84,7 +84,7 @@ func (c *Client) GetProductByID(ctx context.Context, id int) (*ProductDTO, error
 	return &product, nil
 }
 
-func (c *Client) SearchProducts(ctx context.Context, query string, limit, skip int) ([]ProductDTO, int, error) {
+func (c *Client) SearchProducts(ctx context.Context, query string, limit, skip int) ([]ProviderProduct, int, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", baseURL+"/products/search", nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to create request: %w", err)
@@ -109,7 +109,7 @@ func (c *Client) SearchProducts(ctx context.Context, query string, limit, skip i
 	}
 
 	type response struct {
-		Products []ProductDTO `json:"products"`
+		Products []ProviderProduct `json:"products"`
 		Total    int          `json:"total"`
 	}
 
