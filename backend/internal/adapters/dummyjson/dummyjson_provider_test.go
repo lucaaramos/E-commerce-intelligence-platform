@@ -12,18 +12,18 @@ import (
 
 // mockClient implements Client for testing purposes (no actual HTTP requests).
 type mockClient struct {
-	products      []ProductDTO
-	productBySKU  map[string]ProductDTO
-	shouldFail    bool
-	callCount     int
+	products     []ProductDTO
+	productBySKU map[string]ProductDTO
+	shouldFail   bool
+	callCount    int
 }
 
 func newMockClient(products ...ProductDTO) *mockClient {
 	m := &mockClient{
-		products:      products,
-		productBySKU:  make(map[string]ProductDTO),
-		shouldFail:    false,
-		callCount:     0,
+		products:     products,
+		productBySKU: make(map[string]ProductDTO),
+		shouldFail:   false,
+		callCount:    0,
 	}
 	for _, p := range products {
 		m.productBySKU[p.SKU] = p
